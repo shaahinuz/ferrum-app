@@ -10,12 +10,21 @@ export default function CompanyOrdersScreen() {
   return (
     <Tab.Navigator
       screenOptions={{
-        tabBarLabelStyle: { fontWeight: 'bold' },
         tabBarIndicatorStyle: { backgroundColor: '#1976D2' },
+        tabBarLabelStyle: { fontWeight: 'bold' },
+        tabBarStyle: { backgroundColor: '#fff' },
       }}
     >
-      <Tab.Screen name="Products" component={CompanyProductOrdersTab} />
-      <Tab.Screen name="Labor" component={CompanyLaborOrdersTab} />
+      <Tab.Screen
+        name="ProductOrders"
+        component={CompanyProductOrdersTab}
+        options={{ title: 'Продукты' }}
+      />
+      <Tab.Screen
+        name="LaborOrders"
+        component={CompanyLaborOrdersTab}
+        options={{ title: 'Услуги' }}
+      />
     </Tab.Navigator>
   );
 }

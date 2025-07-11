@@ -1,98 +1,116 @@
 // screens/LaborOrderFormScreen.js
 import React, { useState } from 'react';
-import { View, Text, TextInput, Button, Alert, StyleSheet } from 'react-native';
-import { getAuth } from 'firebase/auth';
-import { addDoc, collection } from 'firebase/firestore';
+import {
+  View,
+  Text,
+  TextInput,
+  Button,
+  Alert,
+  StyleSheet
+} from 'react-native';
+import { Picker } from '@react-native-picker/picker';
+import {
+  addDoc,
+  collection,
+  serverTimestamp,
+  Timestamp
+} from 'firebase/firestore';
 import { firestore } from '../firebaseConfig';
-import BackgroundWrapper from '../components/BackgroundWrapper';
 
-export default function LaborOrderFormScreen({ route }) {
-  const { laborType } = route.params;
-
+export default function LaborOrderFormScreen({ navigation }) {
+  const [laborType, setLaborType] = useState('Welder');
   const [details, setDetails] = useState('');
-  const [startPrice, setStartPrice] = useState('');
-  const [uploading, setUploading] = useState(false);
+  const [startingPrice, setStartingPrice] = useState('');
+  const [auctionDuration, setAuctionDuration] = useState('60');
 
   const handleSubmit = async () => {
-    if (!details || !startPrice || isNaN(parseFloat(startPrice))) {
-      Alert.alert('Error', 'Please fill out all fields with valid info.');
+    const durationMin = parseInt(auctionDuration, 10);
+    if (isNaN(durationMin) || durationMin <= 0) {
+      Alert.alert('Ошибка', 'Введите корректную длительность аукциона');
       return;
     }
-
+    if (!details.trim()) {
+      Alert.alert('Ошибка', 'Опишите работу подробнее');
+      return;
+    }
+    const endDate = new Date(Date.now() + durationMin * 60000);
     try {
-      setUploading(true);
-      const userId = getAuth().currentUser?.uid;
-
       await addDoc(collection(firestore, 'laborOrders'), {
-        userId,
         laborType,
         details,
-        startPrice: parseFloat(startPrice),
-        status: 'Pending', // ✅ NEW
-        createdAt: new Date(),
+        startingPrice: parseFloat(startingPrice) || null,
+        auctionDurationMin: durationMin,
+        auctionEndTime: Timestamp.fromDate(endDate),
+        status: 'pending',
+        createdAt: serverTimestamp()
       });
-
-
-      Alert.alert('✅ Success', 'Your labor request has been submitted.');
+      Alert.alert('✅ Заказ создан');
+      navigation.goBack();
     } catch (err) {
       console.error(err);
-      Alert.alert('❌ Error', err.message || 'Something went wrong');
-    } finally {
-      setUploading(false);
+      Alert.alert('Ошибка при создании заказа', err.message);
     }
   };
 
   return (
-  <BackgroundWrapper>
     <View style={styles.container}>
-      <Text style={styles.title}>Labor Type: {laborType}</Text>
+      <Text style={styles.label}>Тип работы</Text>
+      <Picker
+        selectedValue={laborType}
+        onValueChange={setLaborType}
+        style={styles.picker}
+      >
+        <Picker.Item label="Welder" value="Welder" />
+        <Picker.Item label="Engineer" value="Engineer" />
+        <Picker.Item label="Other" value="Other" />
+      </Picker>
 
-      <Text style={styles.label}>Work Details</Text>
+      <Text style={styles.label}>Описание работы</Text>
       <TextInput
-        placeholder="e.g. Weld 3 gates with steel rods"
-        style={styles.input}
+        style={[styles.input, { height: 100 }]}
         value={details}
         onChangeText={setDetails}
         multiline
       />
 
-      <Text style={styles.label}>Starting Auction Price (soums)</Text>
+      <Text style={styles.label}>Начальная цена (сум)</Text>
       <TextInput
-        placeholder="e.g. 150000"
         style={styles.input}
+        value={startingPrice}
+        onChangeText={setStartingPrice}
         keyboardType="numeric"
-        value={startPrice}
-        onChangeText={setStartPrice}
       />
 
-      <View style={{ marginTop: 20 }}>
-        <Button
-          title={uploading ? 'Submitting...' : 'Submit Request'}
-          onPress={handleSubmit}
-          disabled={uploading}
-          color="#1976D2"
-        />
+      <Text style={styles.label}>Длительность аукциона (мин)</Text>
+      <TextInput
+        style={styles.input}
+        value={auctionDuration}
+        onChangeText={setAuctionDuration}
+        keyboardType="numeric"
+      />
+
+      <View style={styles.button}>
+        <Button title="Создать заказ" onPress={handleSubmit} />
       </View>
     </View>
-  </BackgroundWrapper>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 20, flex: 1 },
-  title: { fontSize: 20, fontWeight: 'bold', marginBottom: 20 },
-  label: { fontWeight: 'bold', marginBottom: 4 },
+  container: { flex: 1, padding: 16, backgroundColor: '#fff' },
+  label: { marginTop: 12, fontSize: 14, fontWeight: '500' },
   input: {
-    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#ccc',
     borderRadius: 6,
-    padding: 10,
-    marginBottom: 15,
+    padding: 8,
+    marginTop: 4
   },
+  picker: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 6,
+    marginTop: 4
+  },
+  button: { marginTop: 24 }
 });
-
-
-
-
-
-
-
