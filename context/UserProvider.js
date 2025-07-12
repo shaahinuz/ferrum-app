@@ -21,7 +21,8 @@ export default function UserProvider({ children }) {
         email: firebaseUser.email,
         emailVerified: firebaseUser.emailVerified,
         role: userData.role || 'client',
-        name: userData.name || '', // ✅ include name here
+        name: userData.name || '',
+        avatarUrl: userData.avatarUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png', // ✅ avatar fallback
       });
     } catch (err) {
       console.error('Error loading user:', err);
