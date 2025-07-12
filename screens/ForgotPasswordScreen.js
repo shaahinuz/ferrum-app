@@ -10,13 +10,13 @@ export default function ForgotPasswordScreen({ navigation }) {
 
   const handleReset = async () => {
     if (!email) {
-      Alert.alert('Ошибка', 'Пожалуйста, введите email');
+      Alert.alert('Error', 'Please paste your email');
       return;
     }
 
     try {
       await sendPasswordResetEmail(auth, email);
-      Alert.alert('✅ Успешно', 'Письмо для сброса пароля отправлено.');
+      Alert.alert('✅ Congratulation!', 'Email to reset your password has sent');
 
       setEmail(''); // 🔁 очистим поле
       setTimeout(() => {
@@ -30,20 +30,20 @@ export default function ForgotPasswordScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Восстановить пароль</Text>
+      <Text style={styles.title}>Reset Password</Text>
       <TextInput
         style={styles.input}
-        placeholder="Введите email"
+        placeholder="Paste your email"
         value={email}
         onChangeText={setEmail}
         keyboardType="email-address"
         autoCapitalize="none"
       />
       <TouchableOpacity style={styles.button} onPress={handleReset}>
-        <Text style={styles.buttonText}>Отправить</Text>
+        <Text style={styles.buttonText}>Send</Text>
       </TouchableOpacity>
       <TouchableOpacity onPress={() => navigation.goBack()}>
-        <Text style={styles.backText}>← Назад</Text>
+        <Text style={styles.backText}>← Back</Text>
       </TouchableOpacity>
     </View>
   );

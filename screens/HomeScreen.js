@@ -7,10 +7,9 @@ import { UserContext } from '../context/UserContext';
 export default function HomeScreen({ navigation }) {
   const user = useContext(UserContext);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     const auth = getAuth();
-    signOut(auth);
-    navigation.replace('Login');
+    await signOut(auth); // ✅ корректный выход
   };
 
   return (
