@@ -16,11 +16,12 @@ import { auth, firestore } from '../firebaseConfig';
 export default function RegisterScreen({ navigation }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState('client'); // Default role
+  const [role, setRole] = useState('client');
+  const [name, setName] = useState(''); // username or company name
 
   const handleRegister = async () => {
-    if (!email || !password) {
-      Alert.alert('Error', 'Please enter both email and password.');
+    if (!email || !password || !name) {
+      Alert.alert('Error', 'Please fill all fields.');
       return;
     }
 
@@ -28,23 +29,16 @@ export default function RegisterScreen({ navigation }) {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // Save user role in Firestore
       await setDoc(doc(firestore, 'users', user.uid), {
         email: user.email,
         role: role,
+        name: name,
       });
 
-      // Send verification email
       await sendEmailVerification(user);
 
-      Alert.alert(
-        'Success ✅',
-        'Verification email sent. Please check your inbox and click the link.'
-      );
-
-      // ⛔ DO NOT navigate manually
-      // App.js will automatically show VerifyEmailScreen if !user.emailVerified
-
+      Alert.alert('Success ✅', 'Verification email sent. Please verify before continuing.');
+      navigation.replace('VerifyEmail');
     } catch (error) {
       Alert.alert('Registration Failed', error.message);
     }
@@ -74,19 +68,26 @@ export default function RegisterScreen({ navigation }) {
         secureTextEntry
       />
 
+      <TextInput
+        style={styles.input}
+        placeholder={role === 'company' ? 'Company Name' : 'Username'}
+        value={name}
+        onChangeText={setName}
+      />
+
       <Text style={styles.roleLabel}>Registering as:</Text>
       <View style={styles.roleSelector}>
         <TouchableOpacity
           style={[styles.roleOption, role === 'client' && styles.roleSelected]}
           onPress={() => setRole('client')}
         >
-          <Text style={styles.roleText}>Client</Text>
+          <Text style={[styles.roleText, role === 'client' && styles.roleTextSelected]}>Client</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.roleOption, role === 'company' && styles.roleSelected]}
           onPress={() => setRole('company')}
         >
-          <Text style={styles.roleText}>Company</Text>
+          <Text style={[styles.roleText, role === 'company' && styles.roleTextSelected]}>Company</Text>
         </TouchableOpacity>
       </View>
 
@@ -149,6 +150,9 @@ const styles = StyleSheet.create({
   roleText: {
     color: '#1976D2',
     fontWeight: '600',
+  },
+  roleTextSelected: {
+    color: '#fff',
   },
   button: {
     backgroundColor: '#1976D2',

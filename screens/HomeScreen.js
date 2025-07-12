@@ -9,13 +9,17 @@ export default function HomeScreen({ navigation }) {
 
   const handleLogout = async () => {
     const auth = getAuth();
-    await signOut(auth); // ✅ корректный выход
+    await signOut(auth);
   };
 
   return (
     <BackgroundWrapper>
       <View style={styles.container}>
-        <Text style={styles.title}>Welcome to Ferrum</Text>
+        <Text style={styles.title}>
+          {user?.role === 'company'
+            ? `Welcome, ${user?.name || 'Company'} 👋`
+            : `Welcome, ${user?.name || 'User'} 👋`}
+        </Text>
 
         {/* Company: Prioritized buttons first */}
         {user?.role === 'company' && (

@@ -10,16 +10,18 @@ export default function UserProvider({ children }) {
 
   const loadUser = async (firebaseUser) => {
     try {
-      await firebaseUser.reload(); // 🔁 Refresh the user's status from Firebase
+      await firebaseUser.reload(); // 🔁 Refresh email verification status
       const userRef = doc(firestore, 'users', firebaseUser.uid);
       const userSnap = await getDoc(userRef);
-      const role = userSnap.exists() ? userSnap.data().role : 'client';
+
+      const userData = userSnap.exists() ? userSnap.data() : {};
 
       setUser({
         uid: firebaseUser.uid,
         email: firebaseUser.email,
-        emailVerified: firebaseUser.emailVerified, // ✅ track verification
-        role,
+        emailVerified: firebaseUser.emailVerified,
+        role: userData.role || 'client',
+        name: userData.name || '', // ✅ include name here
       });
     } catch (err) {
       console.error('Error loading user:', err);
@@ -42,13 +44,12 @@ export default function UserProvider({ children }) {
     return () => unsubscribe();
   }, []);
 
-  // ✅ Refresh user every 5 seconds to detect if email was verified
   useEffect(() => {
     const interval = setInterval(() => {
       if (auth.currentUser && !auth.currentUser.emailVerified) {
         loadUser(auth.currentUser);
       }
-    }, 5000); // every 5 seconds
+    }, 5000);
 
     return () => clearInterval(interval);
   }, []);
