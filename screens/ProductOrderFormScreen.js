@@ -1,140 +1,156 @@
 // screens/ProductOrderFormScreen.js
-import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, Button, Alert, StyleSheet } from 'react-native';
-import * as DocumentPicker from 'expo-document-picker';
-import { addDoc, collection } from 'firebase/firestore';
-import { getAuth } from 'firebase/auth';
-import { firestore, storage } from '../firebaseConfig';
-import { ref, uploadBytes } from 'firebase/storage';
-import BackgroundWrapper from '../components/BackgroundWrapper';
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  Button,
+  Alert,
+  StyleSheet
+} from 'react-native';
+import { Picker } from '@react-native-picker/picker';
+import {
+  addDoc,
+  collection,
+  serverTimestamp,
+  Timestamp
+} from 'firebase/firestore';
+import { firestore } from '../firebaseConfig';
 
-export default function ProductOrderFormScreen({ route }) {
-  const { productType } = route.params;
+export default function ProductOrderFormScreen({ navigation }) {
+  const [productType, setProductType] = useState('Metal Doors');
   const [width, setWidth] = useState('');
   const [height, setHeight] = useState('');
   const [depth, setDepth] = useState('');
-  const [quantity, setQuantity] = useState('');
-  const [file, setFile] = useState(null);
-  const [price, setPrice] = useState(0);
-  const [uploading, setUploading] = useState(false);
+  const [quantity, setQuantity] = useState('1');
+  const [maxPrice, setMaxPrice] = useState('');
+  const [auctionDuration, setAuctionDuration] = useState('60'); // минуты
 
-  useEffect(() => {
-    const w = parseFloat(width);
-    const h = parseFloat(height);
-    const d = parseFloat(depth);
-    const q = parseInt(quantity);
-
-    if (w > 0 && h > 0 && d > 0 && q > 0) {
-      const area = w * h;
-      const basePrice = 1000000;
-      const multiplier = d > 3 ? 1 + 0.3 * (d - 3) : 1;
-      const total = Math.round(basePrice * area * q * multiplier);
-      setPrice(total);
-    } else {
-      setPrice(0);
-    }
-  }, [width, height, depth, quantity]);
-
-  const handleFilePick = async () => {
-    const result = await DocumentPicker.getDocumentAsync({});
-    if (result.assets && result.assets.length > 0) {
-      setFile(result.assets[0]);
-    }
+  const calculatePrice = () => {
+    const w = parseFloat(width) || 0;
+    const h = parseFloat(height) || 0;
+    const d = parseFloat(depth) || 0;
+    const area = w * h;
+    const baseMm = 3;
+    const basePrice = 1000000; // сум за м² при 3 мм
+    const extra = Math.max(0, d - baseMm);
+    const unit = basePrice * Math.pow(1.3, extra);
+    return Math.round(unit * area * (parseInt(quantity, 10) || 1));
   };
 
   const handleSubmit = async () => {
-    if (!width || !height || !depth || !quantity || price === 0) {
-      Alert.alert('Error', 'Please fill in all fields with valid values.');
+    const durationMin = parseInt(auctionDuration, 10);
+    if (isNaN(durationMin) || durationMin <= 0) {
+      Alert.alert('Ошибка', 'Введите корректную длительность аукциона');
       return;
     }
-
+    const endDate = new Date(Date.now() + durationMin * 60000);
     try {
-      setUploading(true);
-      const auth = getAuth();
-      const userId = auth.currentUser?.uid;
-      let fileUrl = null;
-
-      if (file) {
-        const response = await fetch(file.uri);
-        const blob = await response.blob();
-        const fileRef = ref(storage, `orders/${Date.now()}_${file.name}`);
-        await uploadBytes(fileRef, blob);
-        fileUrl = fileRef.fullPath;
-      }
-
       await addDoc(collection(firestore, 'productOrders'), {
-        userId,
         productType,
         width: parseFloat(width),
         height: parseFloat(height),
         depth: parseFloat(depth),
-        quantity: parseInt(quantity),
-        calculatedPrice: price,
-        fileUrl,
-        status: 'Pending', // ✅ NEW
-        createdAt: new Date(),
+        quantity: parseInt(quantity, 10),
+        calculatedPrice: calculatePrice(),
+        maxPrice: parseFloat(maxPrice) || null,
+        auctionDurationMin: durationMin,
+        auctionEndTime: Timestamp.fromDate(endDate),
+        status: 'pending',
+        createdAt: serverTimestamp()
       });
-
-
-      Alert.alert('✅ Success', 'Your product order has been submitted.');
+      Alert.alert('✅ Заказ создан');
+      navigation.goBack();
     } catch (err) {
       console.error(err);
-      Alert.alert('❌ Error', err.message || 'Something went wrong');
-    } finally {
-      setUploading(false);
+      Alert.alert('Ошибка при создании заказа', err.message);
     }
   };
 
   return (
-    <BackgroundWrapper>
     <View style={styles.container}>
-      <Text style={styles.title}>Product: {productType}</Text>
+      <Text style={styles.label}>Тип продукта</Text>
+      <Picker
+        selectedValue={productType}
+        onValueChange={setProductType}
+        style={styles.picker}
+      >
+        <Picker.Item label="Metal Doors" value="Metal Doors" />
+        <Picker.Item label="Constructions" value="Constructions" />
+        <Picker.Item label="Billboards" value="Billboards" />
+        <Picker.Item label="Individual Products" value="Individual Products" />
+      </Picker>
 
-      <Text style={styles.label}>Width (meters)</Text>
-      <TextInput style={styles.input} keyboardType="numeric" value={width} onChangeText={setWidth} />
-
-      <Text style={styles.label}>Height (meters)</Text>
-      <TextInput style={styles.input} keyboardType="numeric" value={height} onChangeText={setHeight} />
-
-      <Text style={styles.label}>Depth (mm)</Text>
-      <TextInput style={styles.input} keyboardType="numeric" value={depth} onChangeText={setDepth} />
-
-      <Text style={styles.label}>Quantity</Text>
-      <TextInput style={styles.input} keyboardType="numeric" value={quantity} onChangeText={setQuantity} />
-
-      <Button title={file ? 'File Selected' : 'Upload Dimensions File'} onPress={handleFilePick} />
-
-      <Text style={styles.price}>📦 Calculated Price: <Text style={{ fontWeight: 'bold' }}>{price.toLocaleString()} soums</Text></Text>
-
-      <Button
-        title={uploading ? 'Submitting...' : 'Submit Order'}
-        onPress={handleSubmit}
-        disabled={uploading}
-        color="#1976D2"
+      <Text style={styles.label}>Ширина (м)</Text>
+      <TextInput
+        style={styles.input}
+        value={width}
+        onChangeText={setWidth}
+        keyboardType="numeric"
       />
+
+      <Text style={styles.label}>Высота (м)</Text>
+      <TextInput
+        style={styles.input}
+        value={height}
+        onChangeText={setHeight}
+        keyboardType="numeric"
+      />
+
+      <Text style={styles.label}>Глубина (мм)</Text>
+      <TextInput
+        style={styles.input}
+        value={depth}
+        onChangeText={setDepth}
+        keyboardType="numeric"
+      />
+
+      <Text style={styles.label}>Количество</Text>
+      <TextInput
+        style={styles.input}
+        value={quantity}
+        onChangeText={setQuantity}
+        keyboardType="numeric"
+      />
+
+      <Text style={styles.label}>Макс. цена (сум)</Text>
+      <TextInput
+        style={styles.input}
+        value={maxPrice}
+        onChangeText={setMaxPrice}
+        keyboardType="numeric"
+      />
+
+      <Text style={styles.label}>Длительность аукциона (мин)</Text>
+      <TextInput
+        style={styles.input}
+        value={auctionDuration}
+        onChangeText={setAuctionDuration}
+        keyboardType="numeric"
+      />
+
+      <View style={styles.button}>
+        <Button title="Создать заказ" onPress={handleSubmit} />
+      </View>
     </View>
-  </BackgroundWrapper>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 20, flex: 1 },
-  title: { fontSize: 20, fontWeight: 'bold', marginBottom: 20 },
-  label: { marginTop: 10, marginBottom: 4 },
+  container: { flex: 1, padding: 16, backgroundColor: '#fff' },
+  label: { marginTop: 12, fontSize: 14, fontWeight: '500' },
   input: {
-    backgroundColor: '#fff',
-    padding: 10,
+    borderWidth: 1,
+    borderColor: '#ccc',
     borderRadius: 6,
-    marginBottom: 8,
+    padding: 8,
+    marginTop: 4
   },
-  price: {
-    marginVertical: 15,
-    fontSize: 16,
+  picker: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 6,
+    marginTop: 4
   },
+  button: { marginTop: 24 }
 });
-
-
-
-
-
-
