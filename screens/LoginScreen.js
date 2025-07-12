@@ -1,4 +1,3 @@
-// screens/LoginScreen.js
 import React, { useState } from 'react';
 import {
   View,
@@ -25,7 +24,8 @@ export default function LoginScreen({ navigation }) {
 
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      navigation.replace('Home');
+      // ✅ No manual navigation needed
+      // App.js will redirect automatically based on user.emailVerified
     } catch (error) {
       Alert.alert('Login Failed', error.message);
     }
@@ -59,6 +59,10 @@ export default function LoginScreen({ navigation }) {
 
       <TouchableOpacity style={styles.button} onPress={handleLogin}>
         <Text style={styles.buttonText}>Log In</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')}>
+        <Text style={styles.linkText}>Forgot your password?</Text>
       </TouchableOpacity>
 
       <TouchableOpacity onPress={() => navigation.navigate('Register')}>
@@ -110,4 +114,3 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
 });
-

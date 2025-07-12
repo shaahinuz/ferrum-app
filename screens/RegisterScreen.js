@@ -9,7 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import { auth, firestore } from '../firebaseConfig';
 
@@ -28,13 +28,23 @@ export default function RegisterScreen({ navigation }) {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
+      // Save user role in Firestore
       await setDoc(doc(firestore, 'users', user.uid), {
         email: user.email,
         role: role,
       });
 
-      Alert.alert('Success ✅', `Registered as ${role}`);
-      navigation.replace('Home');
+      // Send verification email
+      await sendEmailVerification(user);
+
+      Alert.alert(
+        'Success ✅',
+        'Verification email sent. Please check your inbox and click the link.'
+      );
+
+      // ⛔ DO NOT navigate manually
+      // App.js will automatically show VerifyEmailScreen if !user.emailVerified
+
     } catch (error) {
       Alert.alert('Registration Failed', error.message);
     }
